@@ -1,0 +1,2 @@
+#!/bin/bash
+python3 QG/QG.py --article_path $1 --n_question $2

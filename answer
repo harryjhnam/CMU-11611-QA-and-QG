@@ -1,0 +1,2 @@
+#!/bin/bash
+python3 QA/QA.py --article_path $1 --questions_path $2
