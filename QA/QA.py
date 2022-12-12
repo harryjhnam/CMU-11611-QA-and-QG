@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import torch
 from transformers import AutoModelForQuestionAnswering, AutoTokenizer, pipeline, AutoModelWithLMHead,AutoModelForSequenceClassification
 import numpy as np
 from sentence_transformers import SentenceTransformer, util
@@ -8,19 +8,24 @@ import argparse
 import warnings
 warnings.filterwarnings('ignore')
 
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")
+
 ext_QA_model = "deepset/roberta-base-squad2"
 gen_QA_model = "MaRiOrOsSi/t5-base-finetuned-question-answering"
 boolean_classfier = "PrimeQA/tydiqa-boolean-question-classifier"
 sim_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
-boolean_tokenizer = AutoTokenizer.from_pretrained(boolean_classfier)
-boolean_classify_model = AutoModelForSequenceClassification.from_pretrained(boolean_classfier)
+boolean_tokenizer = AutoTokenizer.from_pretrained(boolean_classfier).to(device)
+boolean_classify_model = AutoModelForSequenceClassification.from_pretrained(boolean_classfier).to(device)
 
-ext_tokenizer = AutoTokenizer.from_pretrained(ext_QA_model)
-ext_model = AutoModelForQuestionAnswering.from_pretrained(ext_QA_model)
+ext_tokenizer = AutoTokenizer.from_pretrained(ext_QA_model).to(device)
+ext_model = AutoModelForQuestionAnswering.from_pretrained(ext_QA_model).to(device)
 
-gen_tokenizer = AutoTokenizer.from_pretrained(gen_QA_model)
-gen_model = AutoModelWithLMHead.from_pretrained(gen_QA_model)
+gen_tokenizer = AutoTokenizer.from_pretrained(gen_QA_model).to(device)
+gen_model = AutoModelWithLMHead.from_pretrained(gen_QA_model).to(device)
 
 
 def get_window_paragraph(text, question , window_size = 3):
