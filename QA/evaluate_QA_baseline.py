@@ -63,6 +63,27 @@ def evaluate(qa_dataset, articles):
     return results
 
 
+def calculate_bleu_score(results):
+    
+    bleu_sum = defaultdict(lambda: 0.)
+
+    for answer, ours, roberta, t5, w_roberta, w_t5\
+        in tqdm(zip(results['answers'], results['ours_preds'], results['roberta_preds'], results['t5_preds'], results['roberta_window_preds'], results['t5_window_preds'])):
+
+        answer = [answer.lower().split(' ')]
+
+        bleu_sum['ours_preds'] += sentence_bleu( answer, ours.lower().split(' '), weights=(1,0,0,0) )
+        bleu_sum['roberta_preds'] += sentence_bleu( answer, roberta.lower().split(' '), weights=(1,0,0,0) )
+        bleu_sum['t5_preds'] += sentence_bleu( answer, t5.lower().split(' '), weights=(1,0,0,0) )
+        bleu_sum['roberta_window_preds'] += sentence_bleu( answer, w_roberta.lower().split(' '), weights=(1,0,0,0) )
+        bleu_sum['t5_window_preds'] += sentence_bleu( answer, w_t5.lower().split(' '), weights=(1,0,0,0) )
+
+    n_samples = len(results['document_ids'])
+    bleu_scores = {k: v/n_samples for k, v in bleu_sum.items()}
+
+    return bleu_scores
+
+
 def main(args):
     # Load articles
     articles_paths = glob(os.path.join(args.articles_dir, "*/*.txt"))
@@ -87,17 +108,43 @@ def main(args):
 
     bleu_scores = {}
 
-    for difficulty, qa_dataset in [('H', hard_qa)]:
+    for difficulty, qa_dataset in [('E', easy_qa), ('M', medium_qa), ('H', hard_qa)]:
         result_json_path = os.path.join(args.evaluation_output_dir, f'{difficulty}_predictions.json')
 
         if os.path.exists(result_json_path):
+            print(f"--> Loading inference results from file {result_json_path}")
             with open(result_json_path, 'r') as f:
                 results = json.load(f)
         else:
+            print(f"--> Inferencing on {difficulty} questions")
             results = evaluate(qa_dataset, articles)
             with open(result_json_path, 'w') as f:
                 json.dump(results, f, indent=4)
+        print()
 
+        # Calculate bleu score
+        print(f"--> Calculating BLEU score on {difficulty} questions")
+        bleu_scores[difficulty] = calculate_bleu_score(results)
+        print("    :: BLEU scores:")
+        for k, v in bleu_scores[difficulty].items():
+            print(f"    :: - {k}: {v}")
+        print()
+
+        # Add to all results
+        for k, l in results.items():
+            all_results[k].extend(l)
+
+    # Calculate bleu score for all results
+    print(f"--> Calculating BLEU score on all questions")
+    bleu_scores['all'] = calculate_bleu_score(all_results)
+    print("    :: BLEU scores:")
+    for k, v in bleu_scores['all'].items():
+        print(f"    :: - {k}: {v}")
+
+    # Save bleu scores
+    bleu_scores_path = os.path.join(args.evaluation_output_dir, 'bleu_scores.json')
+    with open(bleu_scores_path, 'w') as f:
+        json.dump(bleu_scores, f, indent=4)
     
 
 if __name__ == "__main__":
