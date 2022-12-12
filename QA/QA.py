@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from transformers import AutoModelForQuestionAnswering, AutoTokenizer, pipeline,AutoModelWithLMHead,AutoModelForSequenceClassification
+from transformers import AutoModelForQuestionAnswering, AutoTokenizer, pipeline, AutoModelWithLMHead,AutoModelForSequenceClassification
 import numpy as np
 from sentence_transformers import SentenceTransformer, util
 import argparse
@@ -12,6 +12,15 @@ ext_QA_model = "deepset/roberta-base-squad2"
 gen_QA_model = "MaRiOrOsSi/t5-base-finetuned-question-answering"
 boolean_classfier = "PrimeQA/tydiqa-boolean-question-classifier"
 sim_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+
+boolean_tokenizer = AutoTokenizer.from_pretrained(boolean_classfier)
+boolean_classify_model = AutoModelForSequenceClassification.from_pretrained(boolean_classfier)
+
+ext_tokenizer = AutoTokenizer.from_pretrained(ext_QA_model)
+ext_model = AutoModelForQuestionAnswering.from_pretrained(ext_QA_model)
+
+gen_tokenizer = AutoTokenizer.from_pretrained(gen_QA_model)
+gen_model = AutoModelWithLMHead.from_pretrained(gen_QA_model)
 
 
 def get_window_paragraph(text, question , window_size = 3):
@@ -35,16 +44,12 @@ def get_window_paragraph(text, question , window_size = 3):
     return window_paragraph
 
 def boolean_classify(question):
-    boolean_tokenizer = AutoTokenizer.from_pretrained(boolean_classfier)
-    boolean_classify = AutoModelForSequenceClassification.from_pretrained(boolean_classfier)
-    boolean_classifier = pipeline('text-classification', model=boolean_classify, tokenizer=boolean_tokenizer)
+    boolean_classifier = pipeline('text-classification', model=boolean_classify_model, tokenizer=boolean_tokenizer)
     result = boolean_classifier(question)
     # print(question , result)
     return result[0]['label']
 
 def ext_QA(question, window_paragraph):
-    ext_tokenizer = AutoTokenizer.from_pretrained(ext_QA_model)
-    ext_model = AutoModelForQuestionAnswering.from_pretrained(ext_QA_model)
     ext_QA = pipeline('question-answering', model=ext_model, tokenizer=ext_tokenizer)
     QA_input = {
         'question': question,
@@ -54,9 +59,6 @@ def ext_QA(question, window_paragraph):
     return result['answer']
 
 def gen_QA(question, window_paragraph):
-    gen_tokenizer = AutoTokenizer.from_pretrained(gen_QA_model)
-    gen_model = AutoModelWithLMHead.from_pretrained(gen_QA_model)
-
     input = f"question: {question} context: {window_paragraph}"
     encoded_input = gen_tokenizer([input],
                                   return_tensors='pt',
@@ -81,7 +83,6 @@ if __name__ == "__main__":
 
     for question in questions:
         window_paragraph = get_window_paragraph(text, question)
-        
         if boolean_classify(question) == "LABEL_0":
             # Extractive Question Model
             print(ext_QA(question, window_paragraph))
