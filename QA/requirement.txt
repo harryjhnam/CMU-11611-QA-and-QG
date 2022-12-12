@@ -1,6 +1,6 @@
 numpy
 transformers
 sentence-transformers
-protobuf
+protobuf==3.30.0s
 spacy
 pyinflect
