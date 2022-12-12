@@ -87,7 +87,7 @@ def main(args):
 
     bleu_scores = {}
 
-    for difficulty, qa_dataset in [('E', easy_qa), ('M', medium_qa)], ('H', hard_qa)]:
+    for difficulty, qa_dataset in [('H', hard_qa)]:
         result_json_path = os.path.join(args.evaluation_output_dir, f'{difficulty}_predictions.json')
 
         if os.path.exists(result_json_path):
